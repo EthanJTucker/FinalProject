@@ -1,0 +1,356 @@
+---
+title: "Final Project for MathStats"
+author: "Ethan Tucker"
+date: "May 31, 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+###Initialize Total Data Frame
+set.seed(1000)
+GenData <- read.csv("C:/Users/Ethan/Desktop/Final data set.txt", sep="")
+```
+
+
+
+
+Is the sign effective? The data are discrete, which implies that they cannot be Normal. As we can see in the Normal probability plot and histogram, the data are left skewed, and have a large number of outliers. This implies that drivers tend to slow down, and causes us to guess that faster drivers slow down significantly, and slow drivers speed up significantly. We will test that hypothesis later. Because the counts are large enough, we can use an approximate z test (197>>40, which is the reccommendation in the book). $H_0: \Delta_0 = 0$, $H_a: \Delta_0 \neq 0$, and $\alpha = 0.05$. We will use the approximate z test to do both a p-test and a 95% CI for interpretation. Our rejection regions are accordingly $R = \{p:p\not\in(0.025,0.975)\}$, and $R = \{CI : 0\not\in CI,\alpha =0.05\}$. We obtain a 95% CI of $(-0.9071,-0.2401)$, which does not contain zero, so we reject the null hypothesis that the sign has no effect. The CI is below 0, so we conclude that the sign causes the average driver to slow down. As confirmation of this, we obtain a p value of 0.000375, which is a VERY strong indicator that the sign has a significant slowing effect. It is important to note that the this interval predicts the population mean to exist approximately between -0.9 and -0.24 mph, which is not a large divergence from zero. So, although the sign almost certainly causes drivers to on average reduce their speed, that reduction is on average very small. We can also use a 95% bootstrap percentile interval which does not assume Normality. The PI we get is (-0.9137,-0.2487), which is very close to the obtained CI. The PI also causes us to reject the null hypothesis.
+```{r}
+GenDiff <- GenData$Final - GenData$Initial
+qqnorm(GenDiff)
+hist(GenDiff,breaks=seq(-12,6,1))
+SE <- sd(GenDiff)/sqrt(length(GenDiff))
+zval <- mean(GenDiff)/(SE)
+pnorm(zval)
+mean(GenDiff) + c(1,-1)* qnorm(.025)*sd(GenDiff)/sqrt(length(GenDiff))
+
+
+Y <- 10^5
+boot.means <- rep(0,Y)
+for(i in 1:Y){
+  boot.samp <- sample(GenDiff,length(GenDiff),replace=TRUE)
+  boot.means[i] <- mean(boot.samp)
+}
+quantile(boot.means,c(.025,.975))
+
+```
+
+Does a driver's initial speed influence the acceleration? While taking the data, it seemed that drivers well above the speed limit seemed to decelerate more often, and drivers well below the speed limit seemed to accelerate more often. We will take vehicles below 45 mph and above 54 mph and test their mean differences and standard errors. We have sample sizes of 35 and 37 respectively, which is marginally enough to use an approximate z test. The book reccommends 40 samples, but 35 is pretty close to 40, and it was very difficult to collect data, so I'm going to give myself a pass here. I chose 54 instead of 55 because if we restrict to 55 and above we have too few samples for an approximate z test.
+```{r}
+###Initialize Slow and Fast Data Frames
+N <- length(GenData$Color)
+
+RowsToRemoveSlow <- c()
+for(i in 1:N){
+  if(GenData[i,3] > 45){
+    RowsToRemoveSlow <- append(RowsToRemoveSlow,c(i))
+  }
+}
+SlowData<-GenData[-RowsToRemoveSlow,1:4]
+length(SlowData$Color)
+
+RowsToRemoveFast <- c()
+for(i in 1:N){
+  if(GenData[i,3] < 54){
+    RowsToRemoveFast <- append(RowsToRemoveFast,c(i))
+  }
+}
+FastData<-GenData[-RowsToRemoveFast,1:4]
+length(FastData$Color)
+```
+
+From our histogram of the accelerations of the fast vehicles, we can see that the data are EXTREMELY left skewed. While the mode is still centered around zero, the mean is quite negative. We will once again do a p-test and a 95% CI. For our approximate z test, we take our null and alternate hypotheses as before. The rejection regions are also the same. We obtain a 95% CI of (-3.972, -1.866) which does not contain zero, and so we reject the null hypothesis that the sign has no effect on fast drivers. Because our CI is entirely below zero, we have evidence that fast drivers tend to slow down. Comparing this CI with the CI for the general case, we can see that fast drivers tend to slow down more than the average driver. The p value we obtain is $2.802 \times 10^{-8}$, which is VERY strong evidence that the sign has a significant decelerating effect on fast drivers. A 95% bootstrap percentile interval yields (-4.027, -1.946), which has a quite different upper bound. This shows that the data are heavily skewed. Regardless, we still reject the null hypothesis.
+```{r}
+FastDiff <- FastData$Final - FastData$Initial
+qqnorm(FastDiff)
+hist(FastDiff,breaks=seq(-12,1,1))
+
+SE <- sd(FastDiff)/sqrt(length(FastDiff))
+zval <- mean(FastDiff)/(SE)
+pnorm(zval)
+mean(FastDiff) + c(1,-1)*qnorm(.025)*sd(FastDiff)/sqrt(length(FastDiff))
+
+Y <- 10^5
+boot.means <- rep(0,Y)
+for(i in 1:Y){
+  boot.samp <- sample(FastDiff,length(FastDiff),replace=TRUE)
+  boot.means[i] <- mean(boot.samp)
+}
+quantile(boot.means,c(.025,.975))
+
+```
+
+As for slower drivers, the histogram of accelerations is much more evenly distributed, but still has a noticable slight right skew. We choose the same hypotheses, statistical tests, and rejection regions. We obtain a 95% CI of $(0.4539,1.489)$, which does not contain zero, so we reject the null hypothesis that the the sign does not have an effect on slow drivers. The CI is entirely above zero, so we conclude that slow drivers will on average speed up after seeing their initial speed on the sign. We obtain a p value of $1.171 \times 10^{-4}$, which is strong evidence that the sign has a significant accelerating effect on slow drivers. Using a 95% bootstrap percentily interval yields (0.4571, 1.486), which is very close to the CI. So, these data are pretty accurately described by a Normal assumption. The percentile interval supports our rejection of the null hypothesis.
+```{r}
+SlowDiff <- SlowData$Final - SlowData$Initial
+qqnorm(SlowDiff)
+hist(SlowDiff,breaks=seq(-3,4,1))
+SE <- sd(SlowDiff)/sqrt(length(SlowDiff))
+sd(SlowDiff)
+zval <- mean(SlowDiff)/(SE)
+1-pnorm(zval)
+mean(SlowDiff) + c(1,-1)* qnorm(.025)*sd(SlowDiff)/sqrt(length(SlowDiff))
+
+Y <- 10^5
+boot.means <- rep(0,Y)
+for(i in 1:Y){
+  boot.samp <- sample(SlowDiff,length(SlowDiff),replace=TRUE)
+  boot.means[i] <- mean(boot.samp)
+}
+quantile(boot.means,c(.025,.975))
+
+```
+
+
+Do car drivers and truck drivers have different reactions to the sign? We will seperate the general data set into only cars and only trucks, and use various methods to compare the accelerations of truck drivers and car drivers. Our null hypothesis will be that there is no difference in acceleration, whereas the alternate hypothesis will be that there is a difference; $H_0:\mu_{C}-\mu_{T} = 0$, $H_a:\mu_C-\mu_T \neq 0 $. We have 133 car data points and 64 truck data points, so 
+```{r} 
+###Initialize Cars and Trucks Data Frames.
+N <- length(GenData$Color)
+
+RowsToRemoveCars <- c()
+for(i in 1:N){
+  if(GenData[i,2] == "T"){
+    RowsToRemoveCars <- append(RowsToRemoveCars,c(i))
+  }
+}
+CarsData<-GenData[-RowsToRemoveCars,1:4]
+length(CarsData$Color)
+
+RowsToRemoveTrucks <- c()
+for(i in 1:N){
+  if(GenData[i,2] == "C"){
+    RowsToRemoveTrucks <- append(RowsToRemoveTrucks,c(i))
+  }
+}
+TrucksData<-GenData[-RowsToRemoveTrucks,1:4]
+length(TrucksData$Color)
+```
+
+The histograms of the car accelerations and the truck accelerations are both similar. The car driver histogram has a larger standard deviation, but the skews and centers of the two data sets are very close. This leads us to predict that there is not a significant difference in acceleration between the two samples. This will be confirmed momentarily with a significance test.
+```{r}
+###Visualization of data. Note that data are not Normal because they are discrete.
+TrucksDiff <- TrucksData$Final-TrucksData$Initial
+CarsDiff <- CarsData$Final - CarsData$Initial
+qqnorm(TrucksDiff)
+qqnorm(CarsDiff)
+hist(TrucksDiff,breaks=seq(-10,4,1),freq = FALSE)
+hist(CarsDiff,breaks=seq(-13,7,1),freq=FALSE)
+```
+
+
+
+Both the number of cars and number of trucks was greater than 40, so we can use a two-sample approximate z test. We will assume that $\Delta_0 = 0$. We will take $\alpha = 0.05$, with the null and alternate hypotheses as stated above. This leads to the rejection regions $R = \{CI:0\not\in CI\}$, and $R = \{p : p\not\in(.025,.975)\}$ for the CI and p-test respectively. We obtain a 95% CI of (-0.7841,0.5198) which contains 0, so we cannot say that the population mean is not 0 with 95% confidence. Therefore, we fail to reject the null hypothesis that a difference between car drivers and truck drivers exists. Using a 95% Bootstrap PI we obtain (-0.7755,0.5231), which is quite close to the CI. This is further evidence that we fail to reject the null hypothesis, and therfore conclude that there is no significant difference in population accelerations between car and truck drivers.
+```{r}
+### Two sample z test, and two sample bootstrap PI for cars vs. trucks mean acceleration.
+m <- length(CarsDiff)
+n <- length(TrucksDiff)
+zval <- (mean(CarsDiff)-mean(TrucksDiff)-0)/sqrt(sd(CarsDiff)^2/m + sd(TrucksDiff)^2/n)
+pnorm(zval)
+mean(CarsDiff)-mean(TrucksDiff) + c(1,-1)* qnorm(.025)*sqrt(sd(CarsDiff)^2/m + sd(TrucksDiff)^2/n)
+
+Y <- 10^4
+Cars.Boot.Means <- rep(0,Y)
+Trucks.Boot.Means <- rep(0,Y)
+for(i in 1:Y){
+  Cars.Boot.Samp <- sample(CarsDiff,length(CarsDiff), replace=TRUE)
+  Cars.Boot.Means[i] <- mean(Cars.Boot.Samp)
+  Trucks.Boot.Samp <- sample(TrucksDiff,length(TrucksDiff), replace=TRUE)
+  Trucks.Boot.Means[i] <- mean(Trucks.Boot.Samp)
+}
+quantile(Cars.Boot.Means-Trucks.Boot.Means,c(.025,.975))
+
+```
+
+To visualize why this is the case when the acceleration distributions were clearly different as seen above in the historgrams, we can do a quantile comparison. These plots show us that there is no difference in the mean accelerations of cars and trucks for the intermediate acceleration values, but there is a difference for the higher and lower extremes (quantiles) of accelerations. This is due to the cars having a higher standard deviation, thus allowing for more extreme values at the quantile tails. If the data sets were identically distributed, we would expect for the quantile difference distribution a horizontal line on the probability plot, and a single vertical bar about zero for the histogram. I chose to include this as an illustration that although we cannot claim that a difference in mean acceleration exists based on the available data, the acceleration distributions are not identical.
+
+```{r}
+###Comparison of CarsDiff and TruckDiff using a quantile comparison on steps of length 1/(number of trucks). There are fewer trucks, making that count the limiting factor.
+k <- length(TrucksDiff)
+CarsQuant <- rep(0,k)
+TrucksQuant <- rep(0,k)
+for(i in 1:k){
+  CarsQuant[i] <- quantile(CarsDiff,i/64)
+  TrucksQuant[i] <- quantile(TrucksDiff,i/64)
+}
+QuantDiff <- CarsQuant-TrucksQuant
+hist(QuantDiff, seq(-13,10,1),freq=FALSE)
+qqnorm(QuantDiff)
+```
+
+
+
+Does the color of a vehicle predict it's acceleration? Do fast or slow drivers prefer certain colors of cars? That is, is there a significant difference in the mean population accelerations of vehicles of various colors? Due to limited availability of some colors and difficulty in differentiation, I made some simplifications to color distinction. If a color was brown, dark grey, or black, I simplified the color to be BLACK. If a car was silver, very light grey, or white, I recorded WHITE as the color. I'm somewhat color blind, so it is very difficult for me to discern green vs. blue, so I just called them both blue. WARNING! The blue data set only contains 27 elements, and the red only contains 34, neither of which are enough to assume Normality. For the BLUE and RED data I will exclusively use a bootstrap method for PI's, and a bootstrap method to obtain a p value. The white and black color counts are high enough to use the approximate z test. 
+```{r}
+###Initialize Color Data Frames
+N <- length(GenData$Color)
+
+RowsToRemoveWHITE <- c()
+for(i in 1:N){
+  if(GenData[i,1] != "WHITE"){
+    RowsToRemoveWHITE <- append(RowsToRemoveWHITE,c(i))
+  }
+}
+WHITEData<-GenData[-RowsToRemoveWHITE,1:4]
+length(WHITEData$Color)
+
+RowsToRemoveBLACK <- c()
+for(i in 1:N){
+  if(GenData[i,1] != "BLACK"){
+    RowsToRemoveBLACK <- append(RowsToRemoveBLACK,c(i))
+  }
+}
+BLACKData<-GenData[-RowsToRemoveBLACK,1:4]
+length(BLACKData$Color)
+
+RowsToRemoveRED <- c()
+for(i in 1:N){
+  if(GenData[i,1] != "RED"){
+    RowsToRemoveRED <- append(RowsToRemoveRED,c(i))
+  }
+}
+REDData<-GenData[-RowsToRemoveRED,1:4]
+length(REDData$Color)
+
+RowsToRemoveBLUE <- c()
+for(i in 1:N){
+  if(GenData[i,1] != "BLUE"){
+    RowsToRemoveBLUE <- append(RowsToRemoveBLUE,c(i))
+  }
+}
+BLUEData<-GenData[-RowsToRemoveBLUE,1:4]
+length(BLUEData$Color)
+```
+
+As above, it is convenient to construct histograms of the individual color sampling distributions to get a preliminary understanding. The color distributions all seem to be left skewed centered approximately about 0, which is the trend in the general data set. Because of this, we might predict that color does not influence average acceleration. I will compare each color distribution to the general case, because if I compare colors directly we would need to do $3! = 6$ comparisons instead of $n_{colors}=4$ comparisons.  
+```{r}
+###Initialization and Visualization of data. Note that data are not Normal because they are discrete, and obey similar distribution to general case.
+WHITEDiff <- WHITEData$Final-WHITEData$Initial
+BLACKDiff <- BLACKData$Final - BLACKData$Initial
+REDDiff <- REDData$Final - REDData$Initial
+BLUEDiff <- BLUEData$Final - BLUEData$Initial
+qqnorm(WHITEDiff)
+qqnorm(BLACKDiff)
+qqnorm(REDDiff)
+qqnorm(BLUEDiff)
+hist(WHITEDiff,breaks = seq(-12,4,1))
+hist(BLACKDiff,breaks=seq(-12,6,1))
+hist(REDDiff,breaks = seq(-7,3,1))
+hist(BLUEDiff,breaks = seq(-5,2,1))
+```
+We now proceed to check each color against the general sample to test if there is a difference in population accelerations based on color. We begin with the vehicles which I categorized as white. Our null and alternate hypotheses are $H_0: \Delta_0 = 0$, and $H_a: \Delta_0 \neq 0$, where $\Delta_0$ is the difference in population means. For the CI and p test, the rejection regions are therefore $R= \{CI:0\not\in CI\}$, and $R = \{p:p \not\in (.025,.975)\}$. Using the approximate z test, we obtain a p value of 0.409, which is well outside of the rejection region. We therefore fail to reject the null hypothesis that there is an acceleration difference between white vehicle drivers and general vehicle drivers. Both the 95% CI assuming approximate Normal and the 95% bootstrap PI agree that $\Delta_0=0$ is a valid selection within 95% confidence, and so we have strong support for our conclusion. The lower bound of the PI is slightly right of the lower bound of the CI, which tells us that the sample mean distribution is slightly less left skewed than would be predicted by the Normal approximation. This is probably just sampling variance however. The upper bound of the CI's are very comparable.
+```{r}
+###White Vs Gen. Tests. We have sufficient data to use the approximate two sample Z test.
+m <- length(WHITEDiff)
+n <- length(GenDiff)
+Zval <- (mean(WHITEDiff)-mean(GenDiff))/sqrt(sd(WHITEDiff)^2/m + sd(GenDiff)^2/n)
+pnorm(Zval)
+mean(WHITEDiff)-mean(GenDiff) + c(1,-1)* qnorm(.025) * sqrt(sd(WHITEDiff)^2 /m+sd(GenDiff)^2/n)
+
+Gen.Boot.Means <- rep(0,Y)
+WHITE.Boot.Means <- rep(0,Y)
+for(i in 1:Y){
+  WHITE.Bs.Index <- sample(1:length(GenDiff),length(WHITEDiff),replace=TRUE)
+  WHITE.Boot.Means[i] <- mean(GenDiff[WHITE.Bs.Index])
+  Gen.Bs.Index <- sample(1:length(GenDiff),length(GenDiff),replace = TRUE)
+  Gen.Boot.Means[i] <- mean(GenDiff[Gen.Bs.Index])
+}
+quantile(WHITE.Boot.Means - Gen.Boot.Means,c(.025,.975))
+
+```
+
+Continuing onto the black cars, the number of observations of black cars is still large enough to use the approximate z test, so we will repeat the previous section with the new data. Using the same test as above, we fail to reject the null hypothesis that there is a difference in population acceleration between black vehicle drivers and the general driver. Both CI's include $\Delta_0 = 0$, and moreover it is located almost dead center of both distributions, and so we are very confident that black vehicle drivers are indistinguishable from the general driver. The upper tail of the PI is less than the upper tail of the CI, which implies that the sampling distribution is less right skewed than the Normal curve, though again this is likely just sampling variance. The lower tails are very comparable.
+
+```{r}
+###Black Vs Gen. Tests. We have sufficient data to use the approximate two sample Z test.
+m <- length(BLACKDiff)
+n <- length(GenDiff)
+Zval <- (mean(BLACKDiff)-mean(GenDiff))/sqrt(sd(BLACKDiff)^2/m + sd(GenDiff)^2/n)
+pnorm(Zval)
+mean(BLACKDiff)-mean(GenDiff) + c(1,-1)* qnorm(.025) * sqrt(sd(BLACKDiff)^2 /m+sd(GenDiff)^2/n)
+
+Gen.Boot.Means <- rep(0,Y)
+BLACK.Boot.Means <- rep(0,Y)
+for(i in 1:Y){
+  BLACK.Bs.Index <- sample(1:length(GenDiff),length(BLACKDiff),replace=TRUE)
+  BLACK.Boot.Means[i] <- mean(GenDiff[BLACK.Bs.Index])
+  Gen.Bs.Index <- sample(1:length(GenDiff),length(GenDiff),replace = TRUE)
+  Gen.Boot.Means[i] <- mean(GenDiff[Gen.Bs.Index])
+}
+quantile(BLACK.Boot.Means - Gen.Boot.Means,c(.025,.975))
+```
+
+For the red and blue drivers, we do not have enough data points to use the approximate two sample z test, so we have to resort to a purely bootstrap-centric approach. We can define our rejection regions as we did for the white automobiles, because we can still obtain both the p value and a PI. Our PI is $(-0.9051,0.8282)$, which contains the value $\Delta_0 = 0$, and so we fail to reject the null hypothesis that there is no difference between drivers of red vehicles and the general driver.  Our p-value algorithm makes the assumption that the "general driver" in this case is driving a car that is not red. We obtain a p-value of $0.4788$, which means that given that the null hypothesis was true, the accelerations associated with our observations of red automobiles could have been just about randomly pulled out of the pool of not red vehicle drivers ($0.4788 \approx 0.5$). Said in simpler terms, there is not a significant difference between red vehicle drivers and drivers whose vehicles are not red. If we wanted to, we could create a PI of comparing the red vehicles to specifically not red vehicles, but the effect is about the same because the p value is so close to $0.5$.
+```{r}
+###Red Vs Gen. Tests. We DO NOT have sufficient data to use the approximate two sample Z test.
+Gen.Boot.Means <- rep(0,Y)
+RED.Boot.Means <- rep(0,Y)
+observed <- mean(REDDiff) - mean(GenDiff)
+pcount <- 0
+for(i in 1:Y){
+  RED.Bs.Index <- sample(1:length(GenDiff),length(REDDiff),replace=TRUE)
+  RED.Boot.Means[i] <- mean(GenDiff[RED.Bs.Index])
+  Gen.Bs.Index <- sample(1:length(GenDiff),length(GenDiff),replace = TRUE)
+  Gen.Boot.Means[i] <- mean(GenDiff[Gen.Bs.Index])
+  
+}
+
+RED.Pval.Diffs <- rep(0,Y)
+for(i in 1:Y){
+  RED.Pval.Index <- sample(1:length(GenDiff), length(REDDiff),replace = FALSE)
+  RED.Pval.Diffs[i] <- mean(GenDiff[RED.Pval.Index]) - mean(GenDiff[-RED.Pval.Index])
+}
+pval <- (sum(RED.Pval.Diffs > observed) + 1)/(Y+1)
+pval
+
+
+quantile(RED.Boot.Means - Gen.Boot.Means,c(.025,.975))
+
+```
+
+Finally, we arrive at our Blue vehicles. This data set had the fewest observations, and so we will once again use only bootstrap methods to estimate the p-value and construct a PI. Using the same statistical tests as for the red cars, we obtain the same conclusions. Our 95% PI is $(-1.036,0.9126)$ , which contains $\Delta_0 = 0$, and so we fail to reject the null hypothesis that blue drivers have a different mean population acceleration from the general driver. Our p value is just about $0.5$, which has the same implication as mentioned in the red analysis.
+
+```{r}
+###Blue Vs Gen. Tests. We DO NOT have sufficient data to use the approximate two sample Z test.
+Gen.Boot.Means <- rep(0,Y)
+BLUE.Boot.Means <- rep(0,Y)
+observed <- mean(BLUEDiff) - mean(GenDiff)
+pcount <- 0
+
+Gen.Boot.Means <- rep(0,Y)
+BLUE.Boot.Means <- rep(0,Y)
+for(i in 1:Y){
+ BLUE.BS.Samp <- sample(BLUEDiff, length(BLUEDiff), replace = TRUE)
+  BLUE.Boot.Means[i] <- mean(BLUE.BS.Samp)
+  Gen.BS.Samp <- sample(GenDiff, length(GenDiff),replace = TRUE)
+  Gen.Boot.Means[i] <- mean(Gen.BS.Samp)
+}
+quantile(BLUE.Boot.Means - Gen.Boot.Means,c(.025,.975))
+
+BLUE.Pval.Diffs <- rep(0,Y)
+for(i in 1:Y){
+  BLUE.Pval.Index <- sample(1:length(GenDiff), length(BLUEDiff),replace = FALSE)
+  BLUE.Pval.Diffs[i] <- mean(GenDiff[BLUE.Pval.Index]) - mean(GenDiff)
+}
+pval <- (sum(BLUE.Pval.Diffs > observed) + 1)/(Y+1)
+pval
+
+
+quantile(BLUE.Boot.Means - Gen.Boot.Means,c(.025,.975))
+
+```
+
+```{r}
+Gen.Boot.Means <- rep(0,Y)
+BLUE.Boot.Means <- rep(0,Y)
+for(i in 1:Y){
+ BLUE.BS.Samp <- sample(BLUEDiff, length(BLUEDiff), replace = TRUE)
+  BLUE.Boot.Means[i] <- mean(BLUE.BS.Samp)
+  Gen.BS.Samp <- sample(GenDiff, length(GenDiff),replace = TRUE)
+  Gen.Boot.Means[i] <- mean(Gen.BS.Samp)
+}
+quantile(BLUE.Boot.Means - Gen.Boot.Means,c(.025,.975))
+```
